@@ -21,6 +21,11 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan migrate --force
+
+# Seed the sample catalogue only when the store is empty, so admin edits are never overwritten.
+if [ "$(php artisan tinker --execute='echo App\Models\Product::count();' 2>/dev/null | tail -n1 | tr -d '[:space:]')" = "0" ]; then
+    php artisan db:seed --force
+fi
 php artisan storage:link || true
 
 exec "$@"

@@ -45,7 +45,7 @@ RUN npm run build
 #
 # ---- Stage 3: runtime (php-fpm + nginx) ----
 #
-FROM php:8.3-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine AS runtime
 
 ARG APP_ENV=production
 

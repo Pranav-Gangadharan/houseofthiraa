@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render terminates TLS in front of nginx; trust its X-Forwarded-* headers so
+        // generated URLs (Vite assets, links) use https instead of being blocked as mixed content.
+        $middleware->trustProxies(at: '*');
+
         // Razorpay calls this server-to-server; it authenticates with its own signature.
         $middleware->validateCsrfTokens(except: ['razorpay/webhook']);
     })

@@ -70,6 +70,7 @@ RUN apk add --no-cache \
         freetype-dev \
         icu-dev \
         oniguruma-dev \
+        sqlite-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql \

@@ -40,3 +40,29 @@ await sharp('public/brand/silhouette.png')
     .resize(180, 180, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png({ compressionLevel: 9 })
     .toFile('public/brand/favicon.png');
+
+// Frame: the stamp without the bust, cropped to the stamp's edges. The home page lays it over
+// the pixel field, which stitches the bust back into the hole.
+const stamp = Buffer.from(out);
+for (let y = 0; y < crop.height; y++) {
+    for (let x = 0; x < crop.width; x++) {
+        const a = bust[(y * crop.width + x) * 4 + 3];
+        const p = ((crop.top + y) * info.width + crop.left + x) * 4 + 3;
+        stamp[p] = Math.max(0, stamp[p] - a);
+    }
+}
+let [minX, minY, maxX, maxY] = [info.width, info.height, 0, 0];
+for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+        if (stamp[(y * info.width + x) * 4 + 3] > 24) {
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        }
+    }
+}
+const box = { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+await sharp(stamp, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .extract(box)
+    .png({ compressionLevel: 9 })
+    .toFile('public/brand/frame.png');
+console.log('frame box', box, 'bust inside frame', { left: crop.left - box.left, top: crop.top - box.top, width: crop.width, height: crop.height });

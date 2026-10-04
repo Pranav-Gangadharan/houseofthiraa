@@ -68,6 +68,21 @@ class StorefrontTest extends TestCase
         $this->get('/?q=velvet')->assertOk()->assertSee('Nothing matches that yet.');
     }
 
+    public function test_home_banner_shows_configured_images_and_skips_missing_ones(): void
+    {
+        config(['shop.banners' => [
+            ['image' => 'brand/hero.jpg', 'link' => '/?c=midi#shop', 'alt' => 'Festive midis'],
+            ['image' => 'brand/does-not-exist.jpg', 'alt' => 'Missing'],
+        ]]);
+
+        $this->get('/')->assertOk()
+            ->assertSee(asset('brand/hero.jpg'), false)
+            ->assertSee('href="/?c=midi#shop"', false)
+            ->assertSee('Festive midis')
+            ->assertDontSee('does-not-exist.jpg')
+            ->assertDontSee('data-dot', false); // a single banner needs no dots
+    }
+
     public function test_a_size_is_required_and_sold_out_sizes_are_refused(): void
     {
         $product = $this->dress(['sizes' => ['M']]);

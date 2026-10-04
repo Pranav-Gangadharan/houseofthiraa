@@ -1,59 +1,45 @@
-@php
-    $images = $product->imageUrls();
-    $second = $images[1] ?? null;
-    $isNew = in_array($product->id, $newIds ?? [], true) && $product->created_at?->gt(now()->subDays(30));
-    $sizes = collect(config('shop.sizes'))->filter(fn ($size) => $product->hasSize($size));
-@endphp
-
-<article class="card group relative {{ $product->inStock() ? '' : 'is-out' }}"
-         data-price="{{ $product->price }}"
-         data-new="{{ $product->created_at?->timestamp }}"
-         data-category="{{ $product->category }}"
-         @if(empty($inRail) && ($category ?? null) && $category !== $product->category) hidden @endif>
-
-    <div class="card-media">
-        <a href="{{ route('product', $product) }}" tabindex="-1" aria-hidden="true" class="block">
+<article class="card {{ $product->inStock() ? '' : 'is-out' }}" data-category="{{ $product->category }}" @if(($category ?? null) && $category !== $product->category) hidden @endif>
+    <div class="frame">
+        @unless($product->inStock())<span class="badge">Sold out</span>@endunless
+        <a href="{{ route('product', $product) }}" tabindex="-1" aria-hidden="true" class="card-photo">
             @include('shop._plate', ['product' => $product])
-            @if($second)
-                <img src="{{ $second }}" alt="" width="600" height="800" loading="lazy" class="card-alt">
-            @endif
         </a>
 
-        <div class="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5 pointer-events-none">
-            @unless($product->inStock())
-                <span class="badge">Sold out</span>
-            @elseif($isNew)
-                <span class="badge badge-red">New</span>
-            @endunless
-        </div>
-
-        {{-- Quick add: pick a size straight from the grid (pointer devices) --}}
         @if($product->inStock())
-            <form method="post" action="{{ route('bag.store') }}" class="quick-add" aria-label="Quick add {{ $product->name }}">
+            {{-- Quick order: pick a size and go straight to checkout, or drop it in the bag --}}
+            <button type="button" class="qo-toggle" data-qo-toggle aria-expanded="false" aria-controls="qo-{{ $product->id }}" aria-label="Quick order {{ $product->name }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/><path d="M12 11.5v5M9.5 14h5"/></svg>
+            </button>
+
+            <form method="post" action="{{ route('bag.store') }}" id="qo-{{ $product->id }}" class="quick-add qo" aria-label="Quick order {{ $product->name }}">
                 @csrf
                 <input type="hidden" name="product" value="{{ $product->id }}">
-                <p class="text-[0.65rem] uppercase tracking-[0.18em] font-medium text-muted text-center mb-2">Quick add</p>
-                <div class="flex flex-wrap justify-center gap-1.5">
-                    @foreach($sizes as $size)
-                        <button name="size" value="{{ $size }}" class="quick-size" aria-label="Add size {{ $size }} to bag">{{ $size }}</button>
-                    @endforeach
+                <fieldset>
+                    <legend>Quick order <span>Choose a size</span></legend>
+                    <div class="qo-sizes">
+                        @foreach(config('shop.sizes') as $size)
+                            <label>
+                                <input type="radio" name="size" value="{{ $size }}" required @disabled(! $product->hasSize($size))>
+                                <span>{{ $size }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+                <div class="qo-actions">
+                    <button class="btn small" name="buy" value="1">Order now</button>
+                    <button class="qo-bag" aria-label="Add {{ $product->name }} to bag">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>
+                    </button>
                 </div>
             </form>
         @endif
     </div>
 
-    <div class="mt-3.5 space-y-1">
-        <p class="text-[0.65rem] uppercase tracking-[0.18em] text-muted flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full border border-ink/10" style="background: {{ $product->color }}" aria-hidden="true"></span>
-            {{ $product->categoryLabel() }}
-        </p>
-        <h3 class="text-[0.95rem] font-medium leading-snug">
-            <a href="{{ route('product', $product) }}" class="hover:text-red transition-colors">{{ $product->name }}</a>
-        </h3>
-        @if($product->inStock())
-            <x-price :value="$product->price" class="text-sm" />
-        @else
-            <span class="text-sm text-muted">Sold out</span>
-        @endif
-    </div>
+    <a href="{{ route('product', $product) }}" class="meta">
+        <div>
+            <span class="cat">{{ $product->categoryLabel() }}</span>
+            <span class="name">{{ $product->name }}</span>
+        </div>
+        <span class="price">{{ $product->inStock() ? '₹'.number_format($product->price) : 'Sold out' }}</span>
+    </a>
 </article>

@@ -18,7 +18,15 @@ export function mountShelf() {
 
     const apply = (category, { scroll = false } = {}) => {
         const all = category === 'all';
-        cards.forEach((card) => (card.hidden = !all && card.dataset.category !== category));
+        let shown = 0;
+        cards.forEach((card) => {
+            card.hidden = !all && card.dataset.category !== category;
+            card.classList.remove('pop');
+            if (card.hidden) return;
+            card.style.setProperty('--i', String(shown++ % 8));
+            void card.offsetWidth;
+            card.classList.add('pop');
+        });
         pills.forEach((p) => p.setAttribute('aria-pressed', String(p.dataset.filter === category)));
         recount();
 
@@ -49,6 +57,144 @@ export function mountShelf() {
     });
 
     recount();
+}
+
+/**
+ * Home banner slider. The progress bar on the current dot is a CSS animation; when it ends we
+ * move on, so pausing the animation (hover, focus, the pause button, a hidden tab) pauses the
+ * slideshow too. Reduced motion: no autoplay, slides only change on request.
+ */
+export function mountSlider() {
+    const root = document.querySelector('[data-slider]');
+    if (!root) return;
+
+    const slides = [...root.querySelectorAll('.slide')];
+    const dots = [...root.querySelectorAll('[data-dot]')];
+    const toggle = root.querySelector('[data-slider-toggle]');
+    if (slides.length < 2) return;
+
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let index = Math.max(0, slides.findIndex((s) => s.hasAttribute('data-active')));
+    let stopped = reduced;
+
+    const go = (next) => {
+        index = (next + slides.length) % slides.length;
+        slides.forEach((slide, i) => {
+            const on = i === index;
+            slide.toggleAttribute('data-active', on);
+            slide.toggleAttribute('inert', !on);
+            slide.setAttribute('aria-hidden', String(!on));
+        });
+        dots.forEach((dot, i) => {
+            dot.toggleAttribute('aria-current', i === index);
+            // restart the progress animation on the new dot
+            const bar = dot.firstElementChild;
+            bar.style.animation = 'none';
+            void bar.offsetWidth;
+            bar.style.animation = '';
+        });
+    };
+
+    const setStopped = (value) => {
+        stopped = value;
+        root.classList.toggle('is-stopped', stopped);
+        toggle?.setAttribute('aria-label', stopped ? 'Play slideshow' : 'Pause slideshow');
+    };
+
+    dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => go(i));
+        dot.firstElementChild.addEventListener('animationend', () => {
+            if (!stopped && i === index) go(index + 1);
+        });
+    });
+    root.querySelector('[data-slider-prev]')?.addEventListener('click', () => go(index - 1));
+    root.querySelector('[data-slider-next]')?.addEventListener('click', () => go(index + 1));
+    toggle?.addEventListener('click', () => setStopped(!stopped));
+
+    root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') go(index - 1);
+        if (e.key === 'ArrowRight') go(index + 1);
+    });
+
+    // swipe on touch screens; vertical scrolling still belongs to the page
+    let startX = null;
+    let startY = 0;
+    root.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return;
+        startX = e.clientX;
+        startY = e.clientY;
+    }, { passive: true });
+    root.addEventListener('pointerup', (e) => {
+        if (startX === null) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(e.clientY - startY)) go(index + (dx < 0 ? 1 : -1));
+        startX = null;
+    }, { passive: true });
+    root.addEventListener('pointercancel', () => (startX = null));
+
+    setStopped(stopped);
+    go(index);
+}
+
+/** Product cards: the bag button opens the quick order panel on touch screens. */
+export function mountQuickOrder() {
+    const cards = [...document.querySelectorAll('[data-qo-toggle]')].map((btn) => btn.closest('.card'));
+    if (!cards.length) return;
+
+    const close = (except) => cards.forEach((card) => {
+        if (card === except) return;
+        card.classList.remove('is-open');
+        card.querySelector('[data-qo-toggle]').setAttribute('aria-expanded', 'false');
+    });
+
+    cards.forEach((card) => {
+        const toggle = card.querySelector('[data-qo-toggle]');
+        toggle.addEventListener('click', () => {
+            close(card);
+            const open = card.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', String(open));
+            if (open) card.querySelector('.qo input:not(:disabled)')?.focus({ preventScroll: true });
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.card.is-open')) close();
+    });
+    document.addEventListener('keydown', (e) => e.key === 'Escape' && close());
+}
+
+/** Category links steer the pixel field's mood while hovered or focused. */
+export function mountMoods() {
+    const set = (mood) => document.dispatchEvent(new CustomEvent('pixels:mood', { detail: mood }));
+
+    document.querySelectorAll('[data-mood]:not(body)').forEach((el) => {
+        ['mouseenter', 'focus'].forEach((ev) => el.addEventListener(ev, () => set(el.dataset.mood)));
+        ['mouseleave', 'blur'].forEach((ev) => el.addEventListener(ev, () => set(document.body.dataset.mood || 'wave')));
+    });
+}
+
+/** Sections ease in the first time they scroll into view. */
+export function mountReveal() {
+    document.querySelectorAll('.grid > .card').forEach((card, i) => {
+        card.classList.add('reveal');
+        card.style.setProperty('--i', String(i % 4));
+    });
+    const els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.forEach((el) => el.classList.add('is-in'));
+        return;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+            if (e.isIntersecting) {
+                e.target.classList.add('is-in');
+                io.unobserve(e.target);
+            }
+        }
+    }, { rootMargin: '0px 0px -8% 0px' });
+    els.forEach((el) => io.observe(el));
 }
 
 /** Home: arrow buttons for the horizontal "new arrivals" rail. */
@@ -216,7 +362,7 @@ export function mountTicker() {
 
 /** Header: a hairline shadow once the page scrolls; phone search row toggle. */
 export function mountHeader() {
-    const header = document.querySelector('[data-site-header]');
+    const header = document.querySelector('[data-head], [data-site-header]');
     if (!header) return;
 
     const update = () => header.classList.toggle('is-scrolled', window.scrollY > 8);

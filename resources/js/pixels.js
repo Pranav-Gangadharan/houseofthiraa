@@ -1,9 +1,9 @@
 /*
  * The pixel field.
  *
- * A fixed canvas of square "stitches" behind every page. Four quiet moods of
- * cloth (wave, bell, drape, pair) ease into each other when a category is hovered.
- * On the home page the stitches also assemble into the stamp's silhouette.
+ * A fixed canvas of square "stitches". On the home page they assemble into the stamp's
+ * silhouette. The background "cloth" (four moods: wave, bell, drape, pair) is off by default
+ * so the page stays calm; set CLOTH to true to bring it back.
  * Pure canvas, no libraries. Honors prefers-reduced-motion by drawing one still frame.
  */
 
@@ -11,6 +11,7 @@ const SIZE = [0, 0.3, 0.55, 0.82]; // square edge as a share of the cell, per le
 const ALPHA = [0, 0.09, 0.16, 0.26];
 const FRAME_MS = 1000 / 30;
 const REVEAL_MS = 2800;
+const CLOTH = false;
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const smooth = (a, b, x) => {
@@ -103,7 +104,7 @@ export function mountPixelField(canvas) {
         const ready = () => {
             bust.img = img;
             document.documentElement.classList.add('has-bust');
-            bust.startedAt = reduced ? -REVEAL_MS : performance.now() + 350;
+            bust.startedAt = reduced ? -REVEAL_MS : null; // starts when it first scrolls into view
             schedule();
         };
         img.complete && img.naturalWidth ? ready() : img.addEventListener('load', ready, { once: true });
@@ -162,6 +163,7 @@ export function mountPixelField(canvas) {
             const rect = bust.el.getBoundingClientRect();
             if (rect.bottom > 0 && rect.top < H && rect.width > 0) {
                 sampleBust(rect);
+                if (bust.startedAt === null) bust.startedAt = now + 250;
                 ox = Math.round(rect.left / cell);
                 oy = Math.round(rect.top / cell);
                 progress = clamp((now - bust.startedAt) / REVEAL_MS);
@@ -170,17 +172,31 @@ export function mountPixelField(canvas) {
             }
         }
 
+        // inside [data-hush] (the empty stamp frame) only the bust is stitched
+        let hush = null;
+        const hushEl = document.querySelector('[data-hush]');
+        if (hushEl) {
+            const r = hushEl.getBoundingClientRect();
+            const inset = r.width * 0.12;
+            if (r.bottom > 0 && r.top < H) hush = { l: r.left + inset, r: r.right - inset, t: r.top + inset, b: r.bottom - inset };
+        }
+
         const reach = 130;
         let lastAlpha = -1;
 
-        for (let j = 0; j < rows; j++) {
-            for (let i = 0; i < cols; i++) {
+        if (!CLOTH && !bustOn) return;
+
+        // without the cloth only the silhouette's cells need visiting
+        const [i0, i1, j0, j1] = CLOTH ? [0, cols, 0, rows] : [Math.max(0, ox), Math.min(cols, ox + bust.w), Math.max(0, oy), Math.min(rows, oy + bust.h)];
+
+        for (let j = j0; j < j1; j++) {
+            for (let i = i0; i < i1; i++) {
                 const cx = i * cell + cell / 2;
                 const cy = j * cell + cell / 2;
 
                 // base cloth
                 let v = 0;
-                for (const m of active) v += FIELDS[m](i, j + scroll, time, ctxInfo) * weights[m];
+                if (CLOTH) for (const m of active) v += FIELDS[m](i, j + scroll, time, ctxInfo) * weights[m];
                 v /= weightSum;
 
                 // thicker at the margins, calmer behind the content
@@ -192,7 +208,9 @@ export function mountPixelField(canvas) {
                 const dy = cy - pointer.y;
                 const pd = Math.hypot(dx, dy) / reach;
                 const swell = pd < 1 ? (1 - pd) * (1 - pd) : 0;
-                v += swell * 0.7;
+                if (CLOTH) v += swell * 0.7;
+
+                if (hush && cx > hush.l && cx < hush.r && cy > hush.t && cy < hush.b) v = 0;
 
                 let level = v > 0.8 ? 3 : v > 0.64 ? 2 : v > 0.5 ? 1 : 0;
                 let size = SIZE[level] * cell;

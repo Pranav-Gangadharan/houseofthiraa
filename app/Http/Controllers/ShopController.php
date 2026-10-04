@@ -30,7 +30,28 @@ class ShopController extends Controller
             'products' => $products,
             'category' => $category,
             'search' => $search,
+            'banners' => $this->banners(),
         ]);
+    }
+
+    /**
+     * Banner slides for the home page, skipping any whose image is missing.
+     *
+     * @return list<array{src: string, mobile: ?string, href: ?string, alt: string, focus: string}>
+     */
+    private function banners(): array
+    {
+        return collect(config('shop.banners', []))
+            ->filter(fn (array $banner) => ! empty($banner['image']) && file_exists(public_path($banner['image'])))
+            ->map(fn (array $banner) => [
+                'src' => asset($banner['image']),
+                'mobile' => ! empty($banner['mobile_image']) && file_exists(public_path($banner['mobile_image'])) ? asset($banner['mobile_image']) : null,
+                'href' => $banner['link'] ?? null,
+                'alt' => $banner['alt'] ?? '',
+                'focus' => $banner['focus'] ?? 'center',
+            ])
+            ->values()
+            ->all();
     }
 
     public function show(Product $product)

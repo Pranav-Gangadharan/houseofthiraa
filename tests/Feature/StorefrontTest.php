@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Product;
 use App\Support\Cart;
+use Database\Seeders\SampleImagesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -81,6 +82,21 @@ class StorefrontTest extends TestCase
             ->assertSee('Festive midis')
             ->assertDontSee('does-not-exist.jpg')
             ->assertDontSee('data-dot', false); // a single banner needs no dots
+    }
+
+    public function test_sample_photos_fill_in_only_pieces_without_photos(): void
+    {
+        Storage::fake('public');
+        $bare = $this->dress(['name' => 'Kavya', 'images' => []]);
+        $edited = $this->dress(['name' => 'Meera', 'images' => ['products/uploaded-in-admin.jpg']]);
+        $unknown = $this->dress(['name' => 'Brand New Piece', 'images' => []]);
+
+        $this->seed(SampleImagesSeeder::class);
+
+        $this->assertSame(['products/kavya-1.jpg', 'products/kavya-2.jpg'], $bare->fresh()->images);
+        Storage::disk('public')->assertExists('products/kavya-1.jpg');
+        $this->assertSame(['products/uploaded-in-admin.jpg'], $edited->fresh()->images);
+        $this->assertSame([], $unknown->fresh()->images);
     }
 
     public function test_a_size_is_required_and_sold_out_sizes_are_refused(): void

@@ -26,6 +26,10 @@ php artisan migrate --force
 if [ "$(php artisan tinker --execute='echo App\Models\Product::count();' 2>/dev/null | tail -n1 | tr -d '[:space:]')" = "0" ]; then
     php artisan db:seed --force
 fi
+
+# Sample photos: copy any that are missing into storage and attach them to sample pieces that
+# still have none (stores seeded before the photos existed). Never touches admin uploads.
+php artisan db:seed --class=SampleImagesSeeder --force
 php artisan storage:link || true
 
 exec "$@"

@@ -66,3 +66,10 @@ await sharp(stamp, { raw: { width: info.width, height: info.height, channels: 4 
     .png({ compressionLevel: 9 })
     .toFile('public/brand/frame.png');
 console.log('frame box', box, 'bust inside frame', { left: crop.left - box.left, top: crop.top - box.top, width: crop.width, height: crop.height });
+
+// Header logo: the full stamp cropped tight to its edges, small enough for the header.
+await sharp('public/brand/logo.png')
+    .extract(box)
+    .resize({ height: 240 })
+    .png({ compressionLevel: 9 })
+    .toFile('public/brand/logo-mark.png');

@@ -34,9 +34,8 @@
                 @endforeach
             </nav>
 
-            <a href="{{ route('home') }}" class="mark" aria-label="House of Thiraa, home">
-                <small>House of</small>
-                <b>Thiraa</b>
+            <a href="{{ route('home') }}" class="logo" aria-label="House of Thiraa, home">
+                <img src="{{ asset('brand/logo-mark.png') }}" alt="House of Thiraa" width="162" height="240">
             </a>
 
             <nav class="nav end" aria-label="House">

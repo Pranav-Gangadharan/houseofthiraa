@@ -25,12 +25,23 @@
     </div>
 
     @php($categories = config('shop.categories'))
-    @php($current = request()->routeIs('home') ? request('c') : null)
+    @php($onShop = request()->routeIs('shop'))
+    @php($current = $onShop && count((array) request('category')) === 1 ? ((array) request('category'))[0] : null)
     <header class="head" data-head>
         <div class="wrap bar">
+            <div class="phone-tools">
+                <button type="button" class="icon-btn" data-open-drawer aria-controls="menu" aria-expanded="false" aria-label="Open menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+                </button>
+                <button type="button" class="icon-btn" data-open-drawer="search" aria-controls="menu" aria-label="Search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                </button>
+            </div>
+
             <nav class="nav start" aria-label="Shop">
+                <a href="{{ route('shop') }}" @if($onShop && ! $current) aria-current="page" @endif>Shop all</a>
                 @foreach($categories as $slug => $label)
-                    <a href="{{ route('home', ['c' => $slug]) }}#shop" @if($current === $slug) aria-current="page" @endif>{{ $label }}</a>
+                    <a href="{{ route('shop', ['category' => $slug]) }}" @if($current === $slug) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </nav>
 
@@ -47,15 +58,43 @@
                 </a>
             </nav>
         </div>
-        <nav class="wrap nav subnav" aria-label="Shop, small screens">
-            <a href="{{ route('home') }}#shop">All</a>
-            @foreach($categories as $slug => $label)
-                <a href="{{ route('home', ['c' => $slug]) }}#shop" @if($current === $slug) aria-current="page" @endif>{{ $label }}</a>
-            @endforeach
-            <a href="{{ route('about') }}">About</a>
-            <a href="{{ route('contact') }}">Contact</a>
-        </nav>
     </header>
+
+    {{-- Phone menu --}}
+    <div class="drawer-backdrop" data-drawer-backdrop></div>
+    <div class="drawer" id="menu" data-mobile-drawer role="dialog" aria-modal="true" aria-label="Menu" inert>
+        <div class="drawer-head">
+            <a href="{{ route('home') }}" aria-label="House of Thiraa, home"><img src="{{ asset('brand/logo-mark.png') }}" alt="House of Thiraa" width="162" height="240"></a>
+            <button type="button" class="icon-btn" data-close-drawer aria-label="Close menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </div>
+
+        <form action="{{ route('shop') }}" method="get" role="search" class="drawer-search">
+            <label class="sr" for="drawer-search">Search the collection</label>
+            <input id="drawer-search" type="search" name="q" placeholder="Search midis, maxis, co-ords" data-drawer-search>
+            <button aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+        </form>
+
+        <nav class="drawer-nav" aria-label="Menu">
+            <p class="drawer-label">Shop</p>
+            <a href="{{ route('shop') }}" @if($onShop && ! $current) aria-current="page" @endif>Shop all</a>
+            @foreach($categories as $slug => $label)
+                <a href="{{ route('shop', ['category' => $slug]) }}" @if($current === $slug) aria-current="page" @endif>{{ $label }}</a>
+            @endforeach
+
+            <p class="drawer-label">House of Thiraa</p>
+            <a href="{{ route('about') }}" @if(request()->routeIs('about')) aria-current="page" @endif>Our story</a>
+            <a href="{{ route('contact') }}" @if(request()->routeIs('contact')) aria-current="page" @endif>Contact</a>
+            <a href="{{ route('policy') }}" @if(request()->routeIs('policy')) aria-current="page" @endif>Shipping &amp; policy</a>
+            <a href="{{ route('checkout') }}">Your bag @if($bagCount)<span class="drawer-count">{{ $bagCount }}</span>@endif</a>
+        </nav>
+
+        <ul class="drawer-facts">
+            <li>@include('shop._flower') Free shipping across India</li>
+            <li>@include('shop._flower') Pay by UPI, cards or netbanking</li>
+        </ul>
+    </div>
 
     <main>@yield('content')</main>
 
@@ -77,8 +116,9 @@
             <nav aria-label="Shop by category">
                 <h2>Shop</h2>
                 <ul>
+                    <li><a href="{{ route('shop') }}">Shop all</a></li>
                     @foreach($categories as $slug => $label)
-                        <li><a href="{{ route('home', ['c' => $slug]) }}#shop">{{ $label }}</a></li>
+                        <li><a href="{{ route('shop', ['category' => $slug]) }}">{{ $label }}</a></li>
                     @endforeach
                 </ul>
             </nav>

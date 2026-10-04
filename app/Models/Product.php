@@ -55,6 +55,24 @@ class Product extends Model
         return $query->active()->orderBy('position')->orderByDesc('id');
     }
 
+    /** Name, description, or a category whose slug or label contains the words ("maxi", "co-ord"). */
+    public function scopeSearch(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+        if ($search === '') {
+            return $query;
+        }
+
+        $categories = collect(config('shop.categories'))
+            ->filter(fn (string $label, string $slug) => str_contains(strtolower("{$slug} {$label}"), strtolower($search)))
+            ->keys();
+
+        return $query->where(fn (Builder $query) => $query
+            ->where('name', 'like', "%{$search}%")
+            ->orWhere('description', 'like', "%{$search}%")
+            ->orWhereIn('category', $categories));
+    }
+
     /** @return list<string> */
     public function imageUrls(): array
     {

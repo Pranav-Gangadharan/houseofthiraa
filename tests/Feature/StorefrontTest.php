@@ -99,6 +99,48 @@ class StorefrontTest extends TestCase
         $this->assertSame([], $unknown->fresh()->images);
     }
 
+    public function test_shop_page_filters_by_category_size_price_and_stock(): void
+    {
+        $this->dress(['name' => 'Kavya', 'category' => 'midi', 'price' => 1799, 'sizes' => ['S', 'M']]);
+        $this->dress(['name' => 'Anvi', 'category' => 'maxi', 'price' => 2499, 'sizes' => ['L']]);
+        $this->dress(['name' => 'Noor', 'category' => 'maxi', 'price' => 2699, 'sizes' => []]);
+
+        $this->get('/shop')->assertOk()->assertSee('Kavya')->assertSee('Anvi')->assertSee('Noor')->assertSee('3 pieces');
+
+        $this->get('/shop?category=maxi')->assertOk()->assertDontSee('Kavya')->assertSee('Anvi')->assertSee('Noor');
+        $this->get('/shop?category[]=midi&category[]=maxi')->assertSee('Kavya')->assertSee('Anvi');
+        $this->get('/shop?size[]=L')->assertSee('Anvi')->assertDontSee('Kavya')->assertDontSee('Noor');
+        $this->get('/shop?price=under-2000')->assertSee('Kavya')->assertDontSee('Anvi');
+        $this->get('/shop?price=over-2500')->assertSee('Noor')->assertDontSee('Anvi');
+        $this->get('/shop?category=maxi&in_stock=1')->assertSee('Anvi')->assertDontSee('Noor');
+        $this->get('/shop?category=nonsense&price=free')->assertOk()->assertSee('3 pieces');
+        $this->get('/shop?q=velvet')->assertOk()->assertSee('Nothing matches these filters.');
+    }
+
+    public function test_shop_page_sorts_by_price(): void
+    {
+        $this->dress(['name' => 'Kavya', 'price' => 1799]);
+        $this->dress(['name' => 'Anvi', 'price' => 2499]);
+
+        $this->get('/shop?sort=price-desc')->assertSeeInOrder(['Anvi', 'Kavya']);
+        $this->get('/shop?sort=price-asc')->assertSeeInOrder(['Kavya', 'Anvi']);
+    }
+
+    public function test_shop_page_paginates_and_keeps_filters_in_page_links(): void
+    {
+        config(['shop.per_page' => 2]);
+        foreach (['Asha', 'Bina', 'Chitra'] as $i => $name) {
+            $this->dress(['name' => $name, 'category' => 'maxi', 'position' => $i]);
+        }
+
+        $this->get('/shop?category=maxi')->assertOk()
+            ->assertSee('Showing 1–2 of 3')
+            ->assertSee('Asha')->assertDontSee('Chitra')
+            ->assertSee('category=maxi&amp;page=2', false);
+
+        $this->get('/shop?category=maxi&page=2')->assertSee('Showing 3–3 of 3')->assertSee('Chitra')->assertDontSee('Asha');
+    }
+
     public function test_a_size_is_required_and_sold_out_sizes_are_refused(): void
     {
         $product = $this->dress(['sizes' => ['M']]);

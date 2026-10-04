@@ -7,9 +7,11 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ShopController;
+use App\Http\Middleware\EnsureAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'index'])->name('home');
+Route::get('/shop', [ShopController::class, 'catalogue'])->name('shop');
 Route::get('/p/{product}', [ShopController::class, 'show'])->name('product');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
@@ -33,7 +35,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [Admin\AuthController::class, 'create'])->name('login');
     Route::post('login', [Admin\AuthController::class, 'store'])->middleware('throttle:6,1');
 
-    Route::middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function () {
+    Route::middleware(EnsureAdmin::class)->group(function () {
         Route::post('logout', [Admin\AuthController::class, 'destroy'])->name('logout');
 
         Route::redirect('/', '/admin/orders');

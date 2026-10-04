@@ -55,7 +55,7 @@
             @foreach(config('shop.categories') as $slug => $label)
                 @php([$line, $color] = config("shop.category_notes.$slug"))
                 @php($lead = $products->where('category', $slug)->first(fn ($p) => $p->cover()))
-                <a href="{{ route('home', ['c' => $slug]) }}#shop" class="edit reveal" data-delay="{{ $loop->index }}" data-cat="{{ $slug }}" data-mood="{{ config("shop.moods.$slug") }}">
+                <a href="{{ route('shop', ['category' => $slug]) }}" class="edit reveal" data-delay="{{ $loop->index }}" data-mood="{{ config("shop.moods.$slug") }}">
                     <div class="arch">
                         @if($lead)
                             <div class="plate"><img src="{{ $lead->cover() }}" alt="{{ $label }}: {{ $lead->name }}" width="600" height="800" loading="lazy"></div>
@@ -89,9 +89,10 @@
                 @else
                     <span class="eyebrow">@include('shop._flower') The collection</span>
                     <h2 id="shop-title" class="h2">Every piece, <em>in small batches</em></h2>
+                    <a href="{{ route('shop') }}" class="link" style="display:inline-block;margin-top:0.9rem">View all with filters</a>
                 @endif
             </div>
-            <form action="{{ route('home') }}#shop" method="get" role="search" class="search">
+            <form action="{{ route('shop') }}" method="get" role="search" class="search">
                 <label class="sr" for="shelf-search">Search the collection</label>
                 <input id="shelf-search" type="search" name="q" value="{{ $search }}" placeholder="Search pieces">
                 <button aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>

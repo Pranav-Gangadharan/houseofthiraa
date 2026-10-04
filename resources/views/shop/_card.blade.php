@@ -3,6 +3,9 @@
         @unless($product->inStock())<span class="badge">Sold out</span>@endunless
         <a href="{{ route('product', $product) }}" tabindex="-1" aria-hidden="true" class="card-photo">
             @include('shop._plate', ['product' => $product])
+            @if($second = $product->imageUrls()[1] ?? null)
+                <img src="{{ $second }}" alt="" width="600" height="800" loading="lazy" class="card-alt">
+            @endif
         </a>
 
         @if($product->inStock())

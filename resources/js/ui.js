@@ -163,6 +163,50 @@ export function mountQuickOrder() {
     document.addEventListener('keydown', (e) => e.key === 'Escape' && close());
 }
 
+/**
+ * Shop page filters. On wide screens a change applies straight away; in the phone drawer the
+ * shopper picks several and taps "Show results". Empty fields are left out of the URL.
+ */
+export function mountFilters() {
+    const root = document.querySelector('[data-catalogue]');
+    const form = root?.querySelector('[data-filters]');
+    if (!form) return;
+
+    const drawer = matchMedia('(max-width: 64rem)');
+    const toggle = root.querySelector('[data-filters-open]');
+
+    const submit = () => {
+        [...form.elements].forEach((el) => {
+            if (el.name && el.value === '' && el.type !== 'checkbox' && el.type !== 'radio') el.disabled = true;
+            if (el.type === 'radio' && el.checked && el.value === '') el.disabled = true;
+        });
+        // the sort select lives outside the form (form="filters"), drop it when it is the default
+        const sort = document.querySelector('select[form="filters"]');
+        if (sort && sort.value === 'featured') sort.disabled = true;
+        root.classList.add('is-loading');
+        form.submit();
+    };
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submit();
+    });
+    form.addEventListener('change', (e) => {
+        if (e.target.name === 'q') return;
+        if (!drawer.matches) submit();
+    });
+    document.querySelector('select[form="filters"]')?.addEventListener('change', submit);
+
+    const open = (on) => {
+        document.documentElement.classList.toggle('filters-open', on);
+        toggle?.setAttribute('aria-expanded', String(on));
+        document.body.style.overflow = on ? 'hidden' : '';
+    };
+    toggle?.addEventListener('click', () => open(true));
+    root.querySelectorAll('[data-filters-close]').forEach((el) => el.addEventListener('click', () => open(false)));
+    document.addEventListener('keydown', (e) => e.key === 'Escape' && open(false));
+}
+
 /** Category links steer the pixel field's mood while hovered or focused. */
 export function mountMoods() {
     const set = (mood) => document.dispatchEvent(new CustomEvent('pixels:mood', { detail: mood }));
@@ -380,47 +424,59 @@ export function mountHeader() {
 
 /** Mobile navigation drawer */
 export function mountMobileDrawer() {
-    const openBtn = document.querySelector('[data-open-drawer]');
     const drawer = document.querySelector('[data-mobile-drawer]');
     const backdrop = document.querySelector('[data-drawer-backdrop]');
-    const closeBtn = document.querySelector('[data-close-drawer]');
-
     if (!drawer || !backdrop) return;
 
-    const open = () => {
+    const openers = [...document.querySelectorAll('[data-open-drawer]')];
+    const search = drawer.querySelector('[data-drawer-search]');
+    let returnTo = null;
+
+    const open = (opener) => {
+        returnTo = opener;
+        drawer.inert = false;
         drawer.classList.add('is-open');
         backdrop.classList.add('is-open');
-        openBtn?.setAttribute('aria-expanded', 'true');
-        drawer.setAttribute('aria-hidden', 'false');
+        openers.forEach((btn) => btn.setAttribute('aria-expanded', 'true'));
         document.body.style.overflow = 'hidden';
-        closeBtn?.focus();
+        const target = opener?.dataset.openDrawer === 'search' ? search : drawer.querySelector('[data-close-drawer]');
+        setTimeout(() => target?.focus(), 50);
     };
 
     const close = () => {
+        if (!drawer.classList.contains('is-open')) return;
         drawer.classList.remove('is-open');
         backdrop.classList.remove('is-open');
-        openBtn?.setAttribute('aria-expanded', 'false');
-        drawer.setAttribute('aria-hidden', 'true');
+        drawer.inert = true;
+        openers.forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
         document.body.style.overflow = '';
-        openBtn?.focus();
+        returnTo?.focus();
     };
 
-    openBtn?.addEventListener('click', open);
-    closeBtn?.addEventListener('click', close);
+    openers.forEach((btn) => btn.addEventListener('click', () => open(btn)));
+    drawer.querySelector('[data-close-drawer]')?.addEventListener('click', close);
     backdrop.addEventListener('click', close);
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && drawer.classList.contains('is-open')) {
-            close();
+        if (!drawer.classList.contains('is-open')) return;
+        if (e.key === 'Escape') close();
+        if (e.key !== 'Tab') return;
+
+        // keep keyboard focus inside the open menu
+        const focusable = [...drawer.querySelectorAll('a, button, input')];
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
         }
     });
 
-    // Close when clicking category links inside drawer
-    drawer.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', () => {
-            close();
-        });
-    });
+    // the drawer only exists on small screens; tidy up if the window grows while it is open
+    matchMedia('(min-width: 52.01rem)').addEventListener('change', (e) => e.matches && close());
 }
 
 /** Quick add posts and redirects back; land where the shopper was instead of at the top. */

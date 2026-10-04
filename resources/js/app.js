@@ -14,6 +14,7 @@ import {
     mountMobileDrawer,
     mountQuickAdd,
     mountQuickOrder,
+    mountFilters,
 } from './ui.js';
 
 const field = document.getElementById('field');
@@ -32,5 +33,6 @@ mountHeader();
 mountMobileDrawer();
 mountQuickAdd();
 mountQuickOrder();
+mountFilters();
 
 addEventListener('load', mountPay);

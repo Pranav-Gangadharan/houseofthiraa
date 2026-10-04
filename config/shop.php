@@ -39,6 +39,9 @@ return [
         'coord' => ['Two pieces cut together. Wear them as a set or apart.', '#3c6b63'],
     ],
 
+    // Pieces per page on the shop page.
+    'per_page' => 8,
+
     'sizes' => ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
 
     // Inches: size, bust, waist, hip. Sample values. Replace with the brand's real measurements.

@@ -1,13 +1,24 @@
-import { mountPixelField } from './pixels.js';
 import { mountDresses } from './dress.js';
-import { mountShelf, mountMoods, mountProduct, mountCheckout, mountPay } from './ui.js';
-
-const field = document.getElementById('field');
-if (field) mountPixelField(field);
+import {
+    mountShelf,
+    mountRails,
+    mountProduct,
+    mountCheckout,
+    mountPay,
+    mountTicker,
+    mountHeader,
+    mountMobileDrawer,
+    mountQuickAdd,
+} from './ui.js';
 
 mountDresses();
 mountShelf();
-mountMoods();
+mountRails();
 mountProduct();
 mountCheckout();
+mountTicker();
+mountHeader();
+mountMobileDrawer();
+mountQuickAdd();
+
 addEventListener('load', mountPay);

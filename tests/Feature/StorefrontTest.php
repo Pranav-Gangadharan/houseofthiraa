@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\Cart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -56,13 +57,24 @@ class StorefrontTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/data-category="maxi"\s+hidden/', $html);
     }
 
+    public function test_search_finds_pieces_by_name_or_description(): void
+    {
+        $this->dress(['name' => 'Kavya', 'description' => 'Smocked back midi']);
+        $this->dress(['name' => 'Anvi', 'category' => 'maxi', 'description' => 'Floor length']);
+
+        $this->get('/?q=anvi')->assertOk()->assertSee('Anvi')->assertDontSee('Kavya');
+        $this->get('/?q=smocked')->assertOk()->assertSee('Kavya')->assertDontSee('Anvi');
+        $this->get('/?q=maxi')->assertOk()->assertSee('Anvi')->assertDontSee('Kavya');
+        $this->get('/?q=velvet')->assertOk()->assertSee('Nothing matches that yet.');
+    }
+
     public function test_a_size_is_required_and_sold_out_sizes_are_refused(): void
     {
         $product = $this->dress(['sizes' => ['M']]);
 
         $this->post('/bag', ['product' => $product->id])->assertSessionHasErrors('size');
         $this->post('/bag', ['product' => $product->id, 'size' => 'XL'])->assertSessionHasErrors('size');
-        $this->assertSame(0, app(\App\Support\Cart::class)->count());
+        $this->assertSame(0, app(Cart::class)->count());
     }
 
     public function test_buy_now_goes_straight_to_checkout(): void
@@ -119,7 +131,7 @@ class StorefrontTest extends TestCase
 
         $this->assertSame('paid', $order->fresh()->status);
         $this->assertSame('pay_XYZ', $order->fresh()->razorpay_payment_id);
-        $this->assertSame(0, app(\App\Support\Cart::class)->count());
+        $this->assertSame(0, app(Cart::class)->count());
     }
 
     public function test_a_forged_signature_does_not_mark_the_order_paid(): void
@@ -135,7 +147,7 @@ class StorefrontTest extends TestCase
         ])->assertSessionHasErrors('payment');
 
         $this->assertSame('pending', $order->fresh()->status);
-        $this->assertSame(1, app(\App\Support\Cart::class)->count()); // bag kept so they can retry
+        $this->assertSame(1, app(Cart::class)->count()); // bag kept so they can retry
     }
 
     public function test_the_webhook_marks_paid_only_with_a_valid_signature(): void

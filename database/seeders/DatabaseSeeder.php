@@ -4,15 +4,21 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Sample catalogue so the storefront has something to show.
-     * Colours drive the pixel previews until real photos are uploaded in /admin.
+     * Sample catalogue with editorial lookbook photography.
      */
     public function run(): void
     {
+        $seedImgDir = database_path('seeders/images');
+        if (File::isDirectory($seedImgDir)) {
+            File::ensureDirectoryExists(storage_path('app/public/products'));
+            File::copyDirectory($seedImgDir, storage_path('app/public/products'));
+        }
+
         $all = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
         $pieces = [
@@ -28,9 +34,15 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($pieces as $i => [$name, $category, $price, $color, $description, $sizes]) {
+            $slug = strtolower($name);
+            $images = [
+                "products/{$slug}-1.jpg",
+                "products/{$slug}-2.jpg",
+            ];
+
             Product::updateOrCreate(
                 ['name' => $name],
-                compact('category', 'price', 'color', 'description', 'sizes') + ['position' => $i, 'is_active' => true, 'images' => []],
+                compact('category', 'price', 'color', 'description', 'sizes', 'images') + ['position' => $i, 'is_active' => true],
             );
         }
     }
